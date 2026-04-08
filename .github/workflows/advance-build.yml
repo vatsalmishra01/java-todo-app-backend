@@ -49,5 +49,5 @@ jobs:
 
       # Add GitHub Secret
       - name: Secret Notification
-      if: failure()
-      run: echo "Sending notification to ${{ secrets.DUMMY_WEBHOOK }}"
+        if: failure()
+        run: echo "Sending notification to ${{ secrets.DUMMY_WEBHOOK }}"
