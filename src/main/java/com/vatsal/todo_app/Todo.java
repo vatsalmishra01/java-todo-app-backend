@@ -1,6 +1,6 @@
 
 package com.vatsal.todo_app;
-
+//creating a class named Todo
 public class Todo {
     private int id;
     private String title;
