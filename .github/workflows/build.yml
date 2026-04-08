@@ -5,10 +5,12 @@ on:
     branches:
       - develop
       - 'feature/*'
+      - 'ci/*'
   pull_request:
     branches:
       - develop
       - main
+      - 'ci/*'
   schedule:
     - cron: '30 11 * * 3,5'   # Wed & Fri 5 PM I
 
