@@ -1,0 +1,39 @@
+name: CI Pipeline - Backend
+
+on:
+  push:
+    branches:
+      - develop
+      - 'feature/*'
+  pull_request:
+    branches:
+      - develop
+      - main
+  schedule:
+    - cron: '30 11 * * 3,5'   # Wed & Fri 5 PM IST
+
+jobs:
+  build:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Build Project
+        run: mvn clean install
+
+      - name: Run Tests
+        run: mvn test
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: backend-build
+          path: target/*.jar
