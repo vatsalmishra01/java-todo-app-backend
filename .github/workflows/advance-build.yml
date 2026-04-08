@@ -46,3 +46,8 @@ jobs:
         with:
           name: backend-${{ github.run_number }}-${{ github.sha }}
           path: target/*.jar
+
+      # Add GitHub Secret
+      - name: Secret Notification
+      if: failure()
+      run: echo "Sending notification to ${{ secrets.DUMMY_WEBHOOK }}"
