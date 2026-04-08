@@ -13,6 +13,11 @@ on:
   schedule:
     - cron: '30 11 * * 3,5'   # Wed & Fri 5 PM IST
 
+# REQUIRED FOR TEST REPORTER
+permissions:
+  contents: read
+  checks: write
+
 jobs:
   build:
     runs-on: self-hosted
@@ -67,7 +72,7 @@ jobs:
           name: backend-${{ github.run_number }}-${{ github.sha }}
           path: target/*.jar
 
-      # Add GitHub Secret
+      # Add GitHub Secret (Notification)
       - name: Secret Notification
         if: failure()
         run: echo "Sending notification to ${{ secrets.DUMMY_WEBHOOK }}"
