@@ -35,6 +35,26 @@ jobs:
         run: mvn test
         continue-on-error: true
 
+      # Publish Test Results
+      - name: Publish Test Results
+        if: always()
+        uses: dorny/test-reporter@v1
+        with:
+          name: Unit Test Results
+          path: target/surefire-reports/*.xml
+          reporter: java-junit
+
+      # Generate Code Coverage
+      - name: Generate Code Coverage
+        run: mvn jacoco:report
+
+      # Upload coverage report
+      - name: Upload Coverage Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ github.run_number }}
+          path: target/site/jacoco
+
       # LOG FAILURE CLEARLY
       - name: Check Test Result
         if: failure()
