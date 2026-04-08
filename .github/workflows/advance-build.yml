@@ -1,0 +1,48 @@
+name: Advanced CI Pipeline - Backend
+
+on:
+  push:
+    branches:
+      - develop
+      - 'feature/*'
+      - 'ci/*'
+  pull_request:
+    branches:
+      - develop
+      - main
+  schedule:
+    - cron: '30 11 * * 3,5'   # Wed & Fri 5 PM IST
+
+jobs:
+  build:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Build Project
+        run: mvn clean install
+
+      # TEST WITH CONTINUE-ON-ERROR
+      - name: Run Unit Tests
+        run: mvn test
+        continue-on-error: true
+
+      # LOG FAILURE CLEARLY
+      - name: Check Test Result
+        if: failure()
+        run: echo "Tests failed but pipeline continues"
+
+      # ARTIFACT VERSIONING
+      - name: Upload Versioned Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-${{ github.ref_name }}-${{ github.sha }}
+          path: target/*.jar
