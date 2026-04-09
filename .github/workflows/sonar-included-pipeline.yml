@@ -107,12 +107,14 @@ jobs:
           key: ${{ runner.os }}-maven
 
       - name: Run SonarCloud Analysis
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           mvn clean verify sonar:sonar \
             -Dsonar.projectKey=vatsalmishra01_java-todo-app-backend \
             -Dsonar.organization=vatsalmishra01 \
             -Dsonar.host.url=https://sonarcloud.io \
-            -Dsonar.token=${{ secrets.SONAR_TOKEN }}
+            -Dsonar.token=$SONAR_TOKEN
 
 
   # ---------------- PACKAGE JOB ----------------
