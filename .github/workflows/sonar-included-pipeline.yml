@@ -1,4 +1,4 @@
-name: Advanced CI Pipeline (Sonar) - Backend
+name: Advanced CI Pipeline - Backend
 
 on:
   push:
@@ -11,7 +11,7 @@ on:
       - develop
       - main
   schedule:
-    - cron: '30 11 * * 3,5'   # Wed & Fri 5 PM IST
+    - cron: '30 11 * * 3,5'
 
 permissions:
   contents: read
@@ -19,7 +19,6 @@ permissions:
 
 jobs:
 
-  # ---------------- BUILD JOB ----------------
   build:
     runs-on: self-hosted
 
@@ -43,7 +42,6 @@ jobs:
           path: target/*.jar
 
 
-  # ---------------- TEST JOB ----------------
   test:
     runs-on: self-hosted
     needs: build
@@ -84,10 +82,9 @@ jobs:
         run: echo "Tests failed but pipeline continues"
 
 
-  # ---------------- SONAR JOB (LINUX REQUIRED) ----------------
   sonar:
     name: SonarCloud Analysis
-    runs-on: ubuntu-latest   # ✅ REQUIRED FOR SONAR ACTION
+    runs-on: ubuntu-latest
     needs: test
 
     steps:
@@ -100,6 +97,10 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
+      # FIX: build required for .class files
+      - name: Build for Sonar
+        run: mvn clean verify
+
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v2
         env:
@@ -111,7 +112,6 @@ jobs:
             -Dsonar.host.url=https://sonarcloud.io
 
 
-  # ---------------- PACKAGE JOB ----------------
   package:
     runs-on: self-hosted
     needs: sonar
@@ -127,7 +127,6 @@ jobs:
           path: target/*.jar
 
 
-  # ---------------- NOTIFICATION JOB ----------------
   notify:
     runs-on: ubuntu-latest
     needs: [build, test, sonar, package]
