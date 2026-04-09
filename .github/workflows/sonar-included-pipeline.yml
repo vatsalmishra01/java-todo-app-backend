@@ -1,4 +1,4 @@
-name: Advanced CI Pipeline - Backend
+name: Advanced CI Pipeline (Sonar) - Backend
 
 on:
   push:
