@@ -32,7 +32,7 @@ jobs:
           distribution: 'temurin'
 
       - name: Build Project
-        run: mvn clean install
+        run: mvn unclean install
 
       # TEST WITH CONTINUE-ON-ERROR
       - name: Run Unit Tests
