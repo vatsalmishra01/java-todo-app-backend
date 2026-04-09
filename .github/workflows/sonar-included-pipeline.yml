@@ -33,7 +33,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Build Project
+      - name: Build Project (Skip Tests)
         run: mvn clean install -DskipTests
 
       - name: Upload Build Artifact
@@ -107,14 +107,15 @@ jobs:
           key: ${{ runner.os }}-maven
 
       - name: Run SonarCloud Analysis
-        run: mvn verify sonar:sonar \
-          -Dsonar.projectKey=vatsalmishra01_java-todo-app-backend \
-          -Dsonar.organization=vatsalmishra01 \
-          -Dsonar.host.url=https://sonarcloud.io \
-          -Dsonar.login=${{ secrets.SONAR_TOKEN }}
+        run: |
+          mvn clean verify sonar:sonar \
+            -Dsonar.projectKey=vatsalmishra01_java-todo-app-backend \
+            -Dsonar.organization=vatsalmishra01 \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.login=${{ secrets.SONAR_TOKEN }}
 
 
-  # ---------------- ARTIFACT JOB ----------------
+  # ---------------- PACKAGE JOB ----------------
   package:
     runs-on: self-hosted
     needs: sonar
