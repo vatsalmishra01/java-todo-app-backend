@@ -11,7 +11,7 @@ on:
       - develop
       - main
   schedule:
-    - cron: '30 11 * * 3,5'   # Wed & Fri 5 PM IST
+    - cron: '30 11 * * 3,5'
 
 permissions:
   contents: read
@@ -19,7 +19,6 @@ permissions:
 
 jobs:
 
-  # ---------------- BUILD JOB ----------------
   build:
     runs-on: self-hosted
 
@@ -33,30 +32,8 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Build Project (Skip Tests)
-        run: mvn clean install -DskipTests
-
-      - name: Upload Build Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-${{ github.sha }}
-          path: target/*.jar
-
-
-  # ---------------- TEST JOB ----------------
-  test:
-    runs-on: self-hosted
-    needs: build
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
+      - name: Build Project
+        run: mvn clean install
 
       - name: Run Unit Tests
         run: mvn test
@@ -79,16 +56,42 @@ jobs:
           name: coverage-${{ github.run_number }}
           path: target/site/jacoco
 
-      - name: Log Failure
+      - name: Check Test Result
         if: failure()
         run: echo "Tests failed but pipeline continues"
 
+      - name: Upload Versioned Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-${{ github.run_number }}-${{ github.sha }}
+          path: target/*.jar
 
-  # ---------------- SONAR JOB ----------------
+      - name: Send Email Notification (Build)
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "Build Failed - CI Pipeline"
+          to: ${{ secrets.EMAIL_USERNAME }}
+          from: ${{ secrets.EMAIL_USERNAME }}
+          body: |
+            Build Failed!
+
+            Repository: ${{ github.repository }}
+            Branch: ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+
+            Logs:
+            https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+
   sonar:
     name: SonarCloud Analysis
     runs-on: ubuntu-latest
-    needs: test
+    needs: build
 
     steps:
       - name: Checkout Code
@@ -100,13 +103,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Cache Maven Dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-maven
-
-      - name: Run SonarCloud Analysis
+      - name: SonarCloud Scan
         run: |
           mvn clean verify sonar:sonar \
             -Dsonar.projectKey=vatsalmishra01_java-todo-app-backend \
@@ -114,47 +111,23 @@ jobs:
             -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.login=${{ secrets.SONAR_TOKEN }}
 
-
-  # ---------------- PACKAGE JOB ----------------
-  package:
-    runs-on: self-hosted
-    needs: sonar
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Upload Versioned Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-${{ github.ref_name }}-${{ github.sha }}
-          path: target/*.jar
-
-
-  # ---------------- NOTIFICATION JOB ----------------
-  notify:
-    runs-on: ubuntu-latest
-    needs: [build, test, sonar, package]
-    if: failure()
-
-    steps:
-      - name: Send Email Notification
+      - name: Send Email Notification (Sonar)
+        if: failure()
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com
           server_port: 465
           username: ${{ secrets.EMAIL_USERNAME }}
           password: ${{ secrets.EMAIL_PASSWORD }}
-          subject: "Build Failed - GitHub Actions"
+          subject: "Sonar Analysis Failed"
+          to: ${{ secrets.EMAIL_USERNAME }}
+          from: ${{ secrets.EMAIL_USERNAME }}
           body: |
-            The pipeline has failed.
+            Sonar Analysis Failed!
 
             Repository: ${{ github.repository }}
-            Branch: ${{ github.ref }}
+            Branch: ${{ github.ref_name }}
             Commit: ${{ github.sha }}
-            Actor: ${{ github.actor }}
 
+            Logs:
             https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
-          to: ${{ secrets.EMAIL_USERNAME }}
-          from: GitHub Actions
