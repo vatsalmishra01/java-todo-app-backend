@@ -112,7 +112,7 @@ jobs:
             -Dsonar.projectKey=vatsalmishra01_java-todo-app-backend \
             -Dsonar.organization=vatsalmishra01 \
             -Dsonar.host.url=https://sonarcloud.io \
-            -Dsonar.login=${{ secrets.SONAR_TOKEN }}
+            -Dsonar.token=${{ secrets.SONAR_TOKEN }}
 
 
   # ---------------- PACKAGE JOB ----------------
