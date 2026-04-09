@@ -18,8 +18,6 @@ permissions:
   checks: write
 
 jobs:
-
-  # ---------------- BUILD JOB ----------------
   build:
     runs-on: self-hosted
 
@@ -33,31 +31,21 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Build Project (Skip Tests)
-        run: mvn clean install -DskipTests
+      - name: Build Project
+        run: mvn clean install
 
-      - name: Upload Build Artifact
-        uses: actions/upload-artifact@v4
+      # ---------------- SONARCLOUD (ASSIGNMENT REQUIREMENT) ----------------
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@v2
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
-          name: build-${{ github.sha }}
-          path: target/*.jar
+          args: >
+            -Dsonar.projectKey=vatsalmishra01_java-todo-app-backend
+            -Dsonar.organization=vatsalmishra01
+            -Dsonar.host.url=https://sonarcloud.io
 
-
-  # ---------------- TEST JOB ----------------
-  test:
-    runs-on: self-hosted
-    needs: build
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-
+      # ---------------- TEST ----------------
       - name: Run Unit Tests
         run: mvn test
         continue-on-error: true
@@ -70,6 +58,7 @@ jobs:
           path: target/surefire-reports/*.xml
           reporter: java-junit
 
+      # ---------------- COVERAGE ----------------
       - name: Generate Code Coverage
         run: mvn jacoco:report
 
@@ -79,68 +68,21 @@ jobs:
           name: coverage-${{ github.run_number }}
           path: target/site/jacoco
 
-      - name: Log Failure
+      # ---------------- FAILURE LOG ----------------
+      - name: Check Test Result
         if: failure()
         run: echo "Tests failed but pipeline continues"
 
-
-  # ---------------- SONAR JOB ----------------
-  sonar:
-    name: SonarCloud Analysis
-    runs-on: ubuntu-latest
-    needs: test
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      - name: Cache Maven Dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-maven
-
-      - name: Run SonarCloud Analysis
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: |
-          mvn clean verify sonar:sonar \
-            -Dsonar.projectKey=vatsalmishra01_java-todo-app-backend \
-            -Dsonar.organization=vatsalmishra01 \
-            -Dsonar.host.url=https://sonarcloud.io \
-            -Dsonar.token=$SONAR_TOKEN
-
-
-  # ---------------- PACKAGE JOB ----------------
-  package:
-    runs-on: self-hosted
-    needs: sonar
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
+      # ---------------- ARTIFACT ----------------
       - name: Upload Versioned Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: backend-${{ github.ref_name }}-${{ github.sha }}
+          name: backend-${{ github.run_number }}-${{ github.sha }}
           path: target/*.jar
 
-
-  # ---------------- NOTIFICATION JOB ----------------
-  notify:
-    runs-on: ubuntu-latest
-    needs: [build, test, sonar, package]
-    if: failure()
-
-    steps:
+      # ---------------- EMAIL ----------------
       - name: Send Email Notification
+        if: failure()
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com
@@ -149,7 +91,7 @@ jobs:
           password: ${{ secrets.EMAIL_PASSWORD }}
           subject: "Build Failed - GitHub Actions"
           body: |
-            The pipeline has failed.
+            The build has failed.
 
             Repository: ${{ github.repository }}
             Branch: ${{ github.ref }}
