@@ -13,7 +13,6 @@ on:
   schedule:
     - cron: '30 11 * * 3,5'   # Wed & Fri 5 PM IST
 
-# REQUIRED FOR TEST REPORTER
 permissions:
   contents: read
   checks: write
@@ -33,7 +32,7 @@ jobs:
           distribution: 'temurin'
 
       - name: Build Project
-        run: mvn clean install
+        run: mvn unclean install
 
       # TEST WITH CONTINUE-ON-ERROR
       - name: Run Unit Tests
@@ -72,7 +71,26 @@ jobs:
           name: backend-${{ github.run_number }}-${{ github.sha }}
           path: target/*.jar
 
-      # Add GitHub Secret (Notification)
-      - name: Secret Notification
+      # EMAIL NOTIFICATION ON FAILURE
+      - name: Send Email Notification
         if: failure()
-        run: echo "Sending notification to ${{ secrets.DUMMY_WEBHOOK }}"
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "Build Failed - GitHub Actions"
+          body: |
+            The build has failed.
+
+            Repository: ${{ github.repository }}
+            Branch: ${{ github.ref }}
+            Commit: ${{ github.sha }}
+            Actor: ${{ github.actor }}
+
+            View details:
+            https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+          to: ${{ secrets.EMAIL_USERNAME }}
+          from: GitHub Actions
