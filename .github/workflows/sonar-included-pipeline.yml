@@ -1,0 +1,159 @@
+name: Advanced CI Pipeline - Backend
+
+on:
+  push:
+    branches:
+      - develop
+      - 'feature/*'
+      - 'ci/*'
+  pull_request:
+    branches:
+      - develop
+      - main
+  schedule:
+    - cron: '30 11 * * 3,5'   # Wed & Fri 5 PM IST
+
+permissions:
+  contents: read
+  checks: write
+
+jobs:
+
+  # ---------------- BUILD JOB ----------------
+  build:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Build Project
+        run: mvn clean install -DskipTests
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ github.sha }}
+          path: target/*.jar
+
+
+  # ---------------- TEST JOB ----------------
+  test:
+    runs-on: self-hosted
+    needs: build
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Run Unit Tests
+        run: mvn test
+        continue-on-error: true
+
+      - name: Publish Test Results
+        if: always()
+        uses: dorny/test-reporter@v1
+        with:
+          name: Unit Test Results
+          path: target/surefire-reports/*.xml
+          reporter: java-junit
+
+      - name: Generate Code Coverage
+        run: mvn jacoco:report
+
+      - name: Upload Coverage Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ github.run_number }}
+          path: target/site/jacoco
+
+      - name: Log Failure
+        if: failure()
+        run: echo "Tests failed but pipeline continues"
+
+
+  # ---------------- SONAR JOB ----------------
+  sonar:
+    name: SonarCloud Analysis
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Cache Maven Dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven
+
+      - name: Run SonarCloud Analysis
+        run: mvn verify sonar:sonar \
+          -Dsonar.projectKey=vatsalmishra01_java-todo-app-backend \
+          -Dsonar.organization=vatsalmishra01 \
+          -Dsonar.host.url=https://sonarcloud.io \
+          -Dsonar.login=${{ secrets.SONAR_TOKEN }}
+
+
+  # ---------------- ARTIFACT JOB ----------------
+  package:
+    runs-on: self-hosted
+    needs: sonar
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Upload Versioned Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-${{ github.ref_name }}-${{ github.sha }}
+          path: target/*.jar
+
+
+  # ---------------- NOTIFICATION JOB ----------------
+  notify:
+    runs-on: ubuntu-latest
+    needs: [build, test, sonar, package]
+    if: failure()
+
+    steps:
+      - name: Send Email Notification
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "Build Failed - GitHub Actions"
+          body: |
+            The pipeline has failed.
+
+            Repository: ${{ github.repository }}
+            Branch: ${{ github.ref }}
+            Commit: ${{ github.sha }}
+            Actor: ${{ github.actor }}
+
+            https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+          to: ${{ secrets.EMAIL_USERNAME }}
+          from: GitHub Actions
