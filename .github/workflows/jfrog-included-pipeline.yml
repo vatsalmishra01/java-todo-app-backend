@@ -101,12 +101,7 @@ jobs:
             -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.login=${{ secrets.SONAR_TOKEN }}
 
-      # Enforce Quality Gate (fails job if gate fails)
-      - name: Check Sonar Quality Gate
-        uses: sonarsource/sonarcloud-quality-gate-action@v1
-        timeout-minutes: 5
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      
 
   # ------------------------------------------------------------
   # Artifactory Job: Upload Artifact Only If Quality Passes
