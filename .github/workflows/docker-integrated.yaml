@@ -125,9 +125,9 @@ jobs:
 
       - name: Run Docker Container
         run: |
-          docker run -d -p 8080:9200 todo-app:${{ github.sha }}
+          docker run -d -p 9090:9200 todo-app:${{ github.sha }}
           sleep 10
-          curl -f http://localhost:8080 || exit 1
+          curl -f http://localhost:9090 || exit 1
 
 
   # ------------------------------------------------------------
